@@ -86,6 +86,7 @@
 
 #undef ARDUINO
 
+EthernetClient httpClient;
 
 void setup()
 {
@@ -102,7 +103,7 @@ void loop()
 	// Send locally attached sensors data here
 }
 
-void SendToHub(const MyMessage &msg) 
+void SendToHub(const MyMessage &msg)
 {
 	char convBuf[61];
 	char body[61];
@@ -110,6 +111,10 @@ void SendToHub(const MyMessage &msg)
 	// TODO remove hard coding
 	IPAddress hubIp(192, 168, 1, 3);
 	int hubPort = 39500;
+
+  	String readString;
+  	//bool currentLineIsBlank = true;
+	String hubMsg;
 
 	// store command to an 8 bit unsigned integer
 	// this will allow it to be tested and only send
@@ -119,15 +124,64 @@ void SendToHub(const MyMessage &msg)
 	// put logic here to only send specified commnads to the hub
 
 	// convert to a ; delimited string to send to the hub
-    sprintf(body, "%d;%d;%d;%d;%d;%s\n",msg.sender, msg.sensor, command, msg.isAck(), msg.type, msg.getString(convBuf));
+	sprintf(body, "%d;%d;%d;%d;%d;%s\n", msg.sender, msg.sensor, command, msg.isAck(), msg.type, msg.getString(convBuf));
 
-    GATEWAY_DEBUG(PSTR("GWT:MSG:BODY %s\n"), body);
+	hubMsg = body;
+
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF hubMsg %s"), hubMsg);
+
+	if (httpClient.connect(hubIp, hubPort))
+	{
+		// send message to hub
+		GATEWAY_DEBUG(PSTR("GWT:MSG:ECF SendToHub Connected to server\n"));
+		httpClient.println("POST / HTTP/1.1");
+		httpClient.print("HOST: ");
+		httpClient.print(hubIp);
+		httpClient.print(":");
+		httpClient.println(hubPort);
+		httpClient.println("CONTENT-TYPE: text");
+		httpClient.print("CONTENT-LENGTH: ");
+		httpClient.println(hubMsg.length());
+		httpClient.println();
+		httpClient.println(hubMsg);
+/*
+		// read hub response
+		while (httpClient.connected())
+		{
+			char c = httpClient.read();
+			//read by char HTTP response
+			readString += c;
+
+			// if you've gotten to the end of the line (received a newline
+			// character) and the line is blank, the http request has ended,
+			// so you can send a reply
+			if (c == '\n')
+			{
+				// you're starting a new line
+				currentLineIsBlank = true;
+			}
+			else if (c != '\r')
+			{
+				// you've gotten a character on the current line
+				currentLineIsBlank = false;
+			}
+		}
+
+		Serial.print("Hub Response: ");
+		Serial.println(readString);
+*/
+		httpClient.stop();
+		GATEWAY_DEBUG(PSTR("GWT:MSG:ECF httpClient stopped\n"));
+	}
+	else
+	{
+		GATEWAY_DEBUG(PSTR("!GWT:MSG:ECF Not connected to hub\n"));
+	}
 }
 
 void receive(const MyMessage &msg) 
 {
-	Serial.println("received message");
-
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF receive started\n"));
 	// Send it to SmartThings hub
 	SendToHub(msg);
 }
