@@ -86,6 +86,7 @@
 
 #undef ARDUINO
 
+
 void setup()
 {
 	// Setup locally attached sensors
@@ -100,3 +101,34 @@ void loop()
 {
 	// Send locally attached sensors data here
 }
+
+void SendToHub(const MyMessage &msg) 
+{
+	char convBuf[61];
+	char body[61];
+
+	// TODO remove hard coding
+	IPAddress hubIp(192, 168, 1, 3);
+	int hubPort = 39500;
+
+	// store command to an 8 bit unsigned integer
+	// this will allow it to be tested and only send
+	// certain commands to the hub
+	uint8_t command = msg.getCommand();
+
+	// put logic here to only send specified commnads to the hub
+
+	// convert to a ; delimited string to send to the hub
+    sprintf(body, "%d;%d;%d;%d;%d;%s\n",msg.sender, msg.sensor, command, msg.isAck(), msg.type, msg.getString(convBuf));
+
+    GATEWAY_DEBUG(PSTR("GWT:MSG:BODY %s\n"), body);
+}
+
+void receive(const MyMessage &msg) 
+{
+	Serial.println("received message");
+
+	// Send it to SmartThings hub
+	SendToHub(msg);
+}
+
