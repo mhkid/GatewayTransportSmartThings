@@ -22,34 +22,6 @@
 // global variables
 extern MyMessage _msgTmp;
 
-// housekeeping, remove for 3.0.0
-#ifdef MY_ESP8266_SSID
-#warning MY_ESP8266_SSID is deprecated, use MY_WIFI_SSID instead!
-#define MY_WIFI_SSID MY_ESP8266_SSID
-#undef MY_ESP8266_SSID // cleanup
-#endif
-
-#ifdef MY_ESP8266_PASSWORD
-#warning MY_ESP8266_PASSWORD is deprecated, use MY_WIFI_PASSWORD instead!
-#define MY_WIFI_PASSWORD MY_ESP8266_PASSWORD
-#undef MY_ESP8266_PASSWORD // cleanup
-#endif
-
-#ifdef MY_ESP8266_BSSID
-#warning MY_ESP8266_BSSID is deprecated, use MY_WIFI_BSSID instead!
-#define MY_WIFI_BSSID MY_ESP8266_BSSID
-#undef MY_ESP8266_BSSID // cleanup
-#endif
-
-#ifdef MY_ESP8266_HOSTNAME
-#warning MY_ESP8266_HOSTNAME is deprecated, use MY_HOSTNAME instead!
-#define MY_HOSTNAME MY_ESP8266_HOSTNAME
-#undef MY_ESP8266_HOSTNAME // cleanup
-#endif
-
-#ifndef MY_WIFI_BSSID
-#define MY_WIFI_BSSID NULL
-#endif
 
 IPAddress _ethernetControllerIP(MY_CONTROLLER_IP_ADDRESS);
 
@@ -75,18 +47,15 @@ EthernetServer _ethernetServer(_ethernetGatewayPort, MY_GATEWAY_MAX_CLIENTS);
 static inputBuffer inputString;
 static EthernetClient client = EthernetClient();
 
-#ifndef MY_IP_ADDRESS
-void gatewayTransportRenewIP();
-#endif
-
 // On W5100 boards with SPI_EN exposed we can use the real SPI bus together with radio
 // (if we enable it during usage)
+// NOTE: W5100 not used on pi, but left in because it was in the original ethernet MyGatewayTransporEthernet.cppcheck
+//       when a W5100 was not used.
 #define _w5100_spi_en(x)
 
 bool gatewayTransportInit(void)
 {
 	_w5100_spi_en(true);
-
 
 	if (client.connect(_ethernetControllerIP, MY_PORT)) {
 		GATEWAY_DEBUG(PSTR("GWT:TIN:ETH OK\n"));
