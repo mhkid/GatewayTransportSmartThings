@@ -51,25 +51,9 @@ extern MyMessage _msgTmp;
 #define MY_WIFI_BSSID NULL
 #endif
 
-#if defined(MY_CONTROLLER_IP_ADDRESS)
 IPAddress _ethernetControllerIP(MY_CONTROLLER_IP_ADDRESS);
-#endif
 
-#if defined(MY_IP_ADDRESS)
 IPAddress _ethernetGatewayIP(MY_IP_ADDRESS);
-#if defined(MY_IP_GATEWAY_ADDRESS)
-IPAddress _gatewayIp(MY_IP_GATEWAY_ADDRESS);
-#elif defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
-// Assume the gateway will be the machine on the same network as the local IP
-// but with last octet being '1'
-IPAddress _gatewayIp(_ethernetGatewayIP[0], _ethernetGatewayIP[1], _ethernetGatewayIP[2], 1);
-#endif /* End of MY_IP_GATEWAY_ADDRESS */
-#if defined(MY_IP_SUBNET_ADDRESS)
-IPAddress _subnetIp(MY_IP_SUBNET_ADDRESS);
-#elif defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
-IPAddress _subnetIp(255, 255, 255, 0);
-#endif /* End of MY_IP_SUBNET_ADDRESS */
-#endif /* End of MY_IP_ADDRESS */
 
 uint8_t _ethernetGatewayMAC[] = { MY_MAC_ADDRESS };
 uint16_t _ethernetGatewayPort = MY_PORT;
@@ -86,38 +70,10 @@ typedef struct {
 	uint8_t idx;
 } inputBuffer;
 
-#if defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
-// Some re-defines to make code more readable below
-#define EthernetServer WiFiServer
-#define EthernetClient WiFiClient
-#define EthernetUDP WiFiUDP
-#endif
-
-#if defined(MY_GATEWAY_CLIENT_MODE)
-#if defined(MY_USE_UDP)
-EthernetUDP _ethernetServer;
-#endif /* End of MY_USE_UDP */
-#elif defined(MY_GATEWAY_LINUX) /* Elif part of MY_GATEWAY_CLIENT_MODE */
 EthernetServer _ethernetServer(_ethernetGatewayPort, MY_GATEWAY_MAX_CLIENTS);
-#else /* Else part of MY_GATEWAY_CLIENT_MODE */
-EthernetServer _ethernetServer(_ethernetGatewayPort);
-#endif /* End of MY_GATEWAY_CLIENT_MODE */
 
-#if defined(MY_GATEWAY_CLIENT_MODE)
 static inputBuffer inputString;
-#if defined(MY_USE_UDP)
-// Nothing to do here
-#else
 static EthernetClient client = EthernetClient();
-#endif /* End of MY_USE_UDP */
-#elif defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32) || defined(MY_GATEWAY_LINUX)
-static EthernetClient clients[MY_GATEWAY_MAX_CLIENTS];
-static bool clientsConnected[MY_GATEWAY_MAX_CLIENTS];
-static inputBuffer inputString[MY_GATEWAY_MAX_CLIENTS];
-#else /* Else part of MY_GATEWAY_CLIENT_MODE */
-static EthernetClient client = EthernetClient();
-static inputBuffer inputString;
-#endif /* End of MY_GATEWAY_CLIENT_MODE */
 
 #ifndef MY_IP_ADDRESS
 void gatewayTransportRenewIP();
@@ -157,11 +113,7 @@ bool gatewayTransportSend(MyMessage &message)
 	_w5100_spi_en(true);
 	if (!client.connected()) {
 		client.stop();
-		#if defined(MY_CONTROLLER_URL_ADDRESS)
-		if (client.connect(MY_CONTROLLER_URL_ADDRESS, MY_PORT)) {
-		#else
 		if (client.connect(_ethernetControllerIP, MY_PORT)) {
-		#endif /* End of MY_CONTROLLER_URL_ADDRESS */
 			GATEWAY_DEBUG(PSTR("GWT:TPS:ETH OK\n"));
 			_w5100_spi_en(false);
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
@@ -249,30 +201,3 @@ MyMessage& gatewayTransportReceive(void)
 	// Return the last parsed message
 	return _ethernetMsg;
 }
-
-#if !defined(MY_IP_ADDRESS) && !defined(MY_GATEWAY_ESP8266) && !defined(MY_GATEWAY_ESP32) && !defined(MY_GATEWAY_LINUX)
-void gatewayTransportRenewIP(void)
-{
-	/* renew/rebind IP address
-	 0 - nothing happened
-	 1 - renew failed
-	 2 - renew success
-	 3 - rebind failed
-	 4 - rebind success
-	 */
-	static unsigned long next_time = hwMillis() + MY_IP_RENEWAL_INTERVAL_MS;
-	unsigned long now = hwMillis();
-
-	// http://playground.arduino.cc/Code/TimingRollover
-	if ((long)(now - next_time) < 0) {
-		return;
-	}
-	if (Ethernet.maintain() & ~(0x06)) {
-		GATEWAY_DEBUG(PSTR("!GWT:TRC:IP RENEW FAIL\n"));
-		/* Error occurred -> IP was not renewed */
-		return;
-	}
-	_w5100_spi_en(false);
-	next_time = now + MY_IP_RENEWAL_INTERVAL_MS;
-}
-#endif
