@@ -5,6 +5,19 @@
  * repeater and gateway builds a routing tables in EEPROM which keeps track of the
  * network topology allowing messages to be routed to nodes.
  *
+ * Created by Eric Frame <eric.c.frame@gmail.com>
+ * Based on the MyGatewayTransporEthernet as noted below.
+ * Some things to note:
+ *   - Intended to work with a SmartThings hub
+ *   - Assumes gateway is a raspberry pi 3
+ *   - Assumes my_controller_address is defined as described in raspberry pi setup
+ *     as described here: https://www.mysensors.org/build/raspberry
+ *   - Assumes DHCP is not used
+ *   - Compiler directives and defines were removed from original transport code
+ *     for reability purposes and also because of the assumption this is running
+ *     on a pi.  Feel free to adapt for other platforms or more widely adaptable for
+ *     other hardware.
+ * 
  * Created by Tomas Hozza <thozza@gmail.com>
  * Copyright (C) 2015  Tomas Hozza
  * Full contributor list: https://github.com/mysensors/MySensors/graphs/contributors
@@ -21,7 +34,6 @@
 
 // global variables
 extern MyMessage _msgTmp;
-
 
 IPAddress _ethernetControllerIP(MY_CONTROLLER_IP_ADDRESS);
 
@@ -55,6 +67,7 @@ static EthernetClient client = EthernetClient();
 
 bool gatewayTransportInit(void)
 {
+	// run when the gateway is started
 	_w5100_spi_en(true);
 
 	if (client.connect(_ethernetControllerIP, MY_PORT)) {
@@ -74,6 +87,7 @@ bool gatewayTransportInit(void)
 
 bool gatewayTransportSend(MyMessage &message)
 {
+	// sends to the hub
 	int nbytes = 0;
 	char *_ethernetMsg = protocolFormat(message);
 
@@ -102,6 +116,7 @@ bool gatewayTransportSend(MyMessage &message)
 
 bool _readFromClient(void)
 {
+	// reads the response from the hub
 	while (client.connected() && client.available()) {
 		const char inChar = client.read();
 		if (inputString.idx < MY_GATEWAY_MAX_RECEIVE_LENGTH - 1) {
@@ -132,19 +147,18 @@ bool _readFromClient(void)
 
 bool gatewayTransportAvailable(void)
 {
+	// original code was trying to stay connected to the hub
+	// not sure if this code is even needed for http
+	// could put code in here to ping the gateway but for now
+	// always returning true.
+	return true;
+
+    /*
 	_w5100_spi_en(true);
-#if !defined(MY_IP_ADDRESS) && defined(MY_GATEWAY_W5100)
-	// renew IP address using DHCP
-	gatewayTransportRenewIP();
-#endif
 
 	if (!client.connected()) {
 		client.stop();
-		#if defined(MY_CONTROLLER_URL_ADDRESS)
-		if (client.connect(MY_CONTROLLER_URL_ADDRESS, MY_PORT)) {
-		#else
 		if (client.connect(_ethernetControllerIP, MY_PORT)) {
-		#endif /* End of MY_CONTROLLER_URL_ADDRESS */
 			GATEWAY_DEBUG(PSTR("GWT:TSA:ETH OK\n"));
 			_w5100_spi_en(false);
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
@@ -163,6 +177,8 @@ bool gatewayTransportAvailable(void)
 	}
 	_w5100_spi_en(false);
 	return false;
+	*/
+
 }
 
 MyMessage& gatewayTransportReceive(void)
