@@ -147,42 +147,42 @@ bool gatewayTransportInit(void)
 	_w5100_spi_en(true);
 
 #if defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
-#if defined(MY_WIFI_SSID)
+	#if defined(MY_WIFI_SSID)
 	// Turn off access point
 	WiFi.mode(WIFI_STA);
-#if defined(MY_HOSTNAME)
-#if defined(MY_GATEWAY_ESP8266)
+		#if defined(MY_HOSTNAME)
+			#if defined(MY_GATEWAY_ESP8266)
 	WiFi.hostname(MY_HOSTNAME);
-#elif defined(MY_GATEWAY_ESP32)
+			#elif defined(MY_GATEWAY_ESP32)
 	WiFi.setHostname(MY_HOSTNAME);
-#endif
-#endif
-#ifdef MY_IP_ADDRESS
+			#endif
+		#endif
+		#ifdef MY_IP_ADDRESS
 	WiFi.config(_ethernetGatewayIP, _gatewayIp, _subnetIp);
-#endif
+		#endif
 	(void)WiFi.begin(MY_WIFI_SSID, MY_WIFI_PASSWORD, 0, MY_WIFI_BSSID);
 	while (WiFi.status() != WL_CONNECTED) {
 		wait(500);
 		GATEWAY_DEBUG(PSTR("GWT:TIN:CONNECTING...\n"));
 	}
 	GATEWAY_DEBUG(PSTR("GWT:TIN:IP: %s\n"), WiFi.localIP().toString().c_str());
-#endif
+	#endif
 #elif defined(MY_GATEWAY_LINUX)
 	// Nothing to do here
 #else
-#if defined(MY_IP_GATEWAY_ADDRESS) && defined(MY_IP_SUBNET_ADDRESS)
+	#if defined(MY_IP_GATEWAY_ADDRESS) && defined(MY_IP_SUBNET_ADDRESS)
 	// DNS server set to gateway ip
 	Ethernet.begin(_ethernetGatewayMAC, _ethernetGatewayIP, _gatewayIp, _gatewayIp, _subnetIp);
-#elif defined(MY_IP_ADDRESS)
+	#elif defined(MY_IP_ADDRESS)
 	Ethernet.begin(_ethernetGatewayMAC, _ethernetGatewayIP);
-#else /* Else part of MY_IP_GATEWAY_ADDRESS && MY_IP_SUBNET_ADDRESS */
+	#else /* Else part of MY_IP_GATEWAY_ADDRESS && MY_IP_SUBNET_ADDRESS */
 	// Get IP address from DHCP
 	if (!Ethernet.begin(_ethernetGatewayMAC)) {
 		GATEWAY_DEBUG(PSTR("!GWT:TIN:DHCP FAIL\n"));
 		_w5100_spi_en(false);
 		return false;
 	}
-#endif /* End of MY_IP_GATEWAY_ADDRESS && MY_IP_SUBNET_ADDRESS */
+	#endif /* End of MY_IP_GATEWAY_ADDRESS && MY_IP_SUBNET_ADDRESS */
 	GATEWAY_DEBUG(PSTR("GWT:TIN:IP=%" PRIu8 ".%" PRIu8 ".%" PRIu8 ".%" PRIu8 "\n"),
 	              Ethernet.localIP()[0],
 	              Ethernet.localIP()[1], Ethernet.localIP()[2], Ethernet.localIP()[3]);
@@ -191,17 +191,17 @@ bool gatewayTransportInit(void)
 #endif /* MY_GATEWAY_ESP8266 / MY_GATEWAY_ESP32 */
 
 #if defined(MY_GATEWAY_CLIENT_MODE)
-#if defined(MY_USE_UDP)
+	#if defined(MY_USE_UDP)
 	_ethernetServer.begin(_ethernetGatewayPort);
-#else /* Else part of MY_USE_UDP */
-#if defined(MY_GATEWAY_LINUX) && defined(MY_IP_ADDRESS)
+	#else /* Else part of MY_USE_UDP */
+		#if defined(MY_GATEWAY_LINUX) && defined(MY_IP_ADDRESS)
 	client.bind(_ethernetGatewayIP);
-#endif /* End of MY_GATEWAY_LINUX && MY_IP_ADDRESS */
-#if defined(MY_CONTROLLER_URL_ADDRESS)
+		#endif /* End of MY_GATEWAY_LINUX && MY_IP_ADDRESS */
+		#if defined(MY_CONTROLLER_URL_ADDRESS)
 	if (client.connect(MY_CONTROLLER_URL_ADDRESS, MY_PORT)) {
-#else
+		#else
 	if (client.connect(_ethernetControllerIP, MY_PORT)) {
-#endif /* End of MY_CONTROLLER_URL_ADDRESS */
+		#endif /* End of MY_CONTROLLER_URL_ADDRESS */
 		GATEWAY_DEBUG(PSTR("GWT:TIN:ETH OK\n"));
 		_w5100_spi_en(false);
 		gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
@@ -211,14 +211,14 @@ bool gatewayTransportInit(void)
 		client.stop();
 		GATEWAY_DEBUG(PSTR("!GWT:TIN:ETH FAIL\n"));
 	}
-#endif /* End of MY_USE_UDP */
+	#endif /* End of MY_USE_UDP */
 #else /* Else part of MY_GATEWAY_CLIENT_MODE */
-#if defined(MY_GATEWAY_LINUX) && defined(MY_IP_ADDRESS)
+	#if defined(MY_GATEWAY_LINUX) && defined(MY_IP_ADDRESS)
 	_ethernetServer.begin(_ethernetGatewayIP);
-#else
+	#else
 	// we have to use pointers due to the constructor of EthernetServer
 	_ethernetServer.begin();
-#endif /* End of MY_GATEWAY_LINUX && MY_IP_ADDRESS */
+	#endif /* End of MY_GATEWAY_LINUX && MY_IP_ADDRESS */
 #endif /* End of MY_GATEWAY_CLIENT_MODE */
 
 	_w5100_spi_en(false);
@@ -226,9 +226,37 @@ bool gatewayTransportInit(void)
 }
 
 #if defined(MY_CONTROLLER_IS_SMARTTHINGS)
-void sendToStHub(string stMessage)
+void sendToStHub(char *hubMessage)
 {
 	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF starting sendToStHub\n"));
+/*
+	char convBuf[61];
+	char hubMsg[61];
+
+	// store command to an 8 bit unsigned integer
+	// this will allow it to be tested and only send
+	// certain commands to the hub
+	uint8_t command = hubMessage.getCommand();
+
+	// put logic here to only send specified commands to the hub
+
+	// convert to a ; delimited string to send to the hub
+	int msgLength = sprintf(hubMsg, "%d;%d;%d;%d;%d;%s\n", hubMessage.sender, hubMessage.sensor, command, hubMessage.isAck(), hubMessage.type, hubMessage.getString(convBuf));
+
+
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF incoming message: %s\n"), hubMessage);
+	
+	client.println("POST / HTTP/1.1");
+	client.print("HOST: ");
+	client.print(_ethernetControllerIP);
+	client.print(":");
+	client.println(MY_PORT);
+	client.println("CONTENT-TYPE: text");
+	client.print("CONTENT-LENGTH: ");
+	client.println(strlen(hubMessage));
+	client.println();
+	client.println(hubMessage);
+*/
 }
 #endif
 
@@ -256,7 +284,6 @@ bool gatewayTransportSend(MyMessage &message)
 	nbytes = _ethernetServer.endPacket();
 #else /* Else part of MY_USE_UDP */
     // ECF ST - not UDP
-	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF before if !client.connected()\n"));
 	if (!client.connected()) {
 		client.stop();
 #if defined(MY_CONTROLLER_URL_ADDRESS)
@@ -271,6 +298,7 @@ bool gatewayTransportSend(MyMessage &message)
 #if defined(MY_CONTROLLER_IS_SMARTTHINGS)
 			GATEWAY_DEBUG(PSTR("GWT:MSG:ECF contoller is ST\n"));
 #endif
+			GATEWAY_DEBUG(PSTR("GWT:MSG:ECF gatewayTransportSend #1\n"));
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
 			_w5100_spi_en(true);
 			presentNode();
@@ -288,7 +316,6 @@ bool gatewayTransportSend(MyMessage &message)
 #endif /* End of MY_CONTROLLER_IS_SMARTTHINGS */
 #endif /* End of MY_USE_UDP */
 #else /* Else part of MY_GATEWAY_CLIENT_MODE */
-	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF Not MY_GATEWAY_CLIENT_MODE\n"));
 	// Send message to connected clients
 #if defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
 	for (uint8_t i = 0; i < ARRAY_SIZE(clients); i++) {
@@ -365,6 +392,7 @@ bool _readFromClient(void)
 			break;
 		}
 	}
+	GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=returning from _readFromClient\n"));
 	return false;
 }
 #endif /* End of MY_GATEWAY_ESP8266 || MY_GATEWAY_LINUX || !MY_GATEWAY_CLIENT_MODE */
@@ -404,6 +432,7 @@ bool gatewayTransportAvailable(void)
 #endif /* End of MY_CONTROLLER_URL_ADDRESS */
 			GATEWAY_DEBUG(PSTR("GWT:TSA:ETH OK\n"));
 			_w5100_spi_en(false);
+			GATEWAY_DEBUG(PSTR("GWT:MSG:ECF gatewayTransportSend #3\n"));
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
 			_w5100_spi_en(true);
 			presentNode();
@@ -413,6 +442,7 @@ bool gatewayTransportAvailable(void)
 			return false;
 		}
 	}
+	//GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=_readFromClient #1\n"));
 	if (_readFromClient()) {
 		setIndication(INDICATION_GW_RX);
 		_w5100_spi_en(false);
@@ -435,6 +465,7 @@ bool gatewayTransportAvailable(void)
 				clients[i] = _ethernetServer.available();
 				inputString[i].idx = 0;
 				GATEWAY_DEBUG(PSTR("GWT:TSA:C=%" PRIu8 ",CONNECTED\n"), i);
+				GATEWAY_DEBUG(PSTR("GWT:MSG:ECF gatewayTransportSend #4\n"));
 				gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
 				// Send presentation of locally attached sensors (and node if applicable)
 				presentNode();
@@ -452,6 +483,7 @@ bool gatewayTransportAvailable(void)
 	}
 	// Loop over clients connect and read available data
 	for (uint8_t i = 0; i < ARRAY_SIZE(clients); i++) {
+		GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=_readFromClient #2\n"));
 		if (_readFromClient(i)) {
 			setIndication(INDICATION_GW_RX);
 			_w5100_spi_en(false);
@@ -468,6 +500,7 @@ bool gatewayTransportAvailable(void)
 			client = newclient;
 			GATEWAY_DEBUG(PSTR("GWT:TSA:ETH OK\n"));
 			_w5100_spi_en(false);
+			GATEWAY_DEBUG(PSTR("GWT:MSG:ECF gatewayTransportSend #5\n"));
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
 			_w5100_spi_en(true);
 			presentNode();
@@ -478,6 +511,7 @@ bool gatewayTransportAvailable(void)
 			GATEWAY_DEBUG(PSTR("!GWT:TSA:ETH FAIL\n"));
 			client.stop();
 		} else {
+			GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=_readFromClient #3\n"));
 			if (_readFromClient()) {
 				setIndication(INDICATION_GW_RX);
 				_w5100_spi_en(false);
