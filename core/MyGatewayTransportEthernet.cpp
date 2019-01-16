@@ -225,15 +225,26 @@ bool gatewayTransportInit(void)
 	return true;
 }
 
+#if defined(MY_CONTROLLER_IS_SMARTTHINGS)
+void sendToStHub(string stMessage)
+{
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF starting sendToStHub\n"));
+}
+#endif
+
 bool gatewayTransportSend(MyMessage &message)
 {
 	int nbytes = 0;
 	char *_ethernetMsg = protocolFormat(message);
 
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF gatewayTransportSend\n"));
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF incoming message %s"),_ethernetMsg);
+
 	setIndication(INDICATION_GW_TX);
 
 	_w5100_spi_en(true);
 #if defined(MY_GATEWAY_CLIENT_MODE)
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF MY_GATEWAY_CLIENT_MODE\n"));
 #if defined(MY_USE_UDP)
 #if defined(MY_CONTROLLER_URL_ADDRESS)
 	_ethernetServer.beginPacket(MY_CONTROLLER_URL_ADDRESS, MY_PORT);
@@ -244,15 +255,22 @@ bool gatewayTransportSend(MyMessage &message)
 	// returns 1 if the packet was sent successfully
 	nbytes = _ethernetServer.endPacket();
 #else /* Else part of MY_USE_UDP */
+    // ECF ST - not UDP
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF before if !client.connected()\n"));
 	if (!client.connected()) {
 		client.stop();
 #if defined(MY_CONTROLLER_URL_ADDRESS)
 		if (client.connect(MY_CONTROLLER_URL_ADDRESS, MY_PORT)) {
 #else
+    	// ECF ST - defined by ip address
+		GATEWAY_DEBUG(PSTR("GWT:MSG:ECF Connecting to ST hub\n"));
 		if (client.connect(_ethernetControllerIP, MY_PORT)) {
 #endif /* End of MY_CONTROLLER_URL_ADDRESS */
 			GATEWAY_DEBUG(PSTR("GWT:TPS:ETH OK\n"));
 			_w5100_spi_en(false);
+#if defined(MY_CONTROLLER_IS_SMARTTHINGS)
+			GATEWAY_DEBUG(PSTR("GWT:MSG:ECF contoller is ST\n"));
+#endif
 			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
 			_w5100_spi_en(true);
 			presentNode();
@@ -263,9 +281,14 @@ bool gatewayTransportSend(MyMessage &message)
 			return false;
 		}
 	}
+#if defined(MY_CONTROLLER_IS_SMARTTHINGS)
+	sendToStHub(_ethernetMsg);
+#else /* Else part of MY_CONTROLLER_IS_SMARTTHINGS */
 	nbytes = client.write((const uint8_t*)_ethernetMsg, strlen(_ethernetMsg));
+#endif /* End of MY_CONTROLLER_IS_SMARTTHINGS */
 #endif /* End of MY_USE_UDP */
 #else /* Else part of MY_GATEWAY_CLIENT_MODE */
+	GATEWAY_DEBUG(PSTR("GWT:MSG:ECF Not MY_GATEWAY_CLIENT_MODE\n"));
 	// Send message to connected clients
 #if defined(MY_GATEWAY_ESP8266) || defined(MY_GATEWAY_ESP32)
 	for (uint8_t i = 0; i < ARRAY_SIZE(clients); i++) {
