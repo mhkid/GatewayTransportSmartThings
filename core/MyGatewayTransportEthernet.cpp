@@ -54,10 +54,11 @@ typedef struct {
 	uint8_t idx;
 } inputBuffer;
 
-EthernetServer _ethernetServer(_ethernetGatewayPort, MY_GATEWAY_MAX_CLIENTS);
+EthernetServer _ethernetServer(80, MY_GATEWAY_MAX_CLIENTS);
 
 static inputBuffer inputString;
 static EthernetClient client = EthernetClient();
+static EthernetClient httpClient;
 
 // On W5100 boards with SPI_EN exposed we can use the real SPI bus together with radio
 // (if we enable it during usage)
@@ -70,16 +71,13 @@ bool gatewayTransportInit(void)
 	// run when the gateway is started
 	_w5100_spi_en(true);
 
-	if (client.connect(_ethernetControllerIP, MY_PORT)) {
-		GATEWAY_DEBUG(PSTR("GWT:TIN:ETH OK\n"));
-		_w5100_spi_en(false);
-		gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
-		_w5100_spi_en(true);
-		presentNode();
-	} else {
-		client.stop();
-		GATEWAY_DEBUG(PSTR("!GWT:TIN:ETH FAIL\n"));
-	}
+	GATEWAY_DEBUG(PSTR("GWT:TIN:STT Initializing\n"));
+    _ethernetServer.begin(_ethernetGatewayIP);
+	GATEWAY_DEBUG(PSTR("GWT:TIN:STT Pi server started\n"));
+	_w5100_spi_en(false);
+	gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
+	_w5100_spi_en(true);
+	presentNode();
 
 	_w5100_spi_en(false);
 	return true;
@@ -90,7 +88,59 @@ bool gatewayTransportSend(MyMessage &message)
 	// sends to the hub
 	int nbytes = 0;
 	char *_ethernetMsg = protocolFormat(message);
+    String readString;
+    bool currentLineIsBlank = true;
 
+	GATEWAY_DEBUG(PSTR("GWT:TPS:STT Connecting to hub %s\n"), _ethernetMsg);
+
+	setIndication(INDICATION_GW_TX);
+
+    if (httpClient.connect(_ethernetControllerIP, _ethernetGatewayPort))
+    {
+        GATEWAY_DEBUG(PSTR("GWT:TPS:STT Connected to hub\n"));
+
+        httpClient.println("POST / HTTP/1.1");
+        httpClient.print("HOST: ");
+        httpClient.print(_ethernetControllerIP);
+        httpClient.print(":");
+        httpClient.println(_ethernetGatewayPort);
+        httpClient.println("CONTENT-TYPE: text");
+        httpClient.print("CONTENT-LENGTH: ");
+        httpClient.println(strlen(_ethernetMsg));
+        httpClient.println();
+        httpClient.println(_ethernetMsg);
+        Serial.println(_ethernetMsg);
+
+        // read hub response
+        while (httpClient.connected()) {
+            char c = httpClient.read();
+            //read by char HTTP response
+            readString += c;
+          
+            // if you've gotten to the end of the line (received a newline
+            // character) and the line is blank, the http request has ended,
+            // so you can send a reply
+            if (c == '\n') {
+                // you're starting a new line
+                currentLineIsBlank = true;
+            }
+            else if (c != '\r') {
+                // you've gotten a character on the current line
+                currentLineIsBlank = false;
+            }
+        }
+
+        GATEWAY_DEBUG(PSTR("GWT:TPS:STT Hub response: \n"));
+        GATEWAY_DEBUG(PSTR("%s\n"), readString);
+        httpClient.stop();
+    }
+    else 
+    {
+        GATEWAY_DEBUG(PSTR("!GWT:TPS:STT Failed to connect to hub\n"));
+    }
+
+
+/*
 	setIndication(INDICATION_GW_TX);
 
 	_w5100_spi_en(true);
@@ -111,7 +161,8 @@ bool gatewayTransportSend(MyMessage &message)
 	}
 	nbytes = client.write((const uint8_t*)_ethernetMsg, strlen(_ethernetMsg));
 	_w5100_spi_en(false);
-	return (nbytes > 0);
+*/
+	return (strlen(_ethernetMsg) > 0);
 }
 
 bool _readFromClient(void)

@@ -85,6 +85,7 @@
 // Digital pin used for inclusion mode button
 //#define MY_INCLUSION_MODE_BUTTON_PIN  3
 
+
 #include <MySensors.h>
 
 #define ARDUINO 100
