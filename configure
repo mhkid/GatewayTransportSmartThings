@@ -45,6 +45,8 @@ MySensors options:
                                 Controller or MQTT broker url.
     --my-controller-ip-address=<IP>
                                 Controller or MQTT broker ip.
+    --my-controller-is-smartthings
+                                Controller is a SmartThings hub.
     --my-port=<PORT>            The port to keep open on gateway mode.
                                 If gateway is set to mqtt, it sets the broker port.
     --my-serial-port=<PORT>     Serial port.
@@ -403,6 +405,10 @@ for opt do
     --my-controller-ip-address=*)
         controller_ip=`echo ${optarg//./,}`
         CPPFLAGS="-DMY_CONTROLLER_IP_ADDRESS=${controller_ip} $CPPFLAGS"
+        ;;
+    --my-controller-is-smartthings=*)
+        controller_ip=`echo ${optarg//./,}`
+        CPPFLAGS="-DMY_CONTROLLER_IS_SMARTTHINGS $CPPFLAGS"
         ;;
     --my-port=*)
         CPPFLAGS="-DMY_PORT=${optarg} $CPPFLAGS"
