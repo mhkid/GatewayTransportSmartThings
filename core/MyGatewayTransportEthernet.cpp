@@ -153,6 +153,13 @@ bool gatewayTransportSend(MyMessage &message)
 
 bool _readFromClient(void)
 {
+// This is where an http request would be received by the webserver hosted on the raspberry pi.
+// This isn't currently working and will need to look into why it's not receiving client requests correctly.
+// Could be because there is a custom ethernet.h for the linux version of MySensors.  Will look into
+// this in the future.  This means that this gateway transport can only send requests to the SmartThings hub
+// and can't process incoming requests from SmartThings.  This works fine on an ESP8266 and an UNO
+// with a W5100.  For now just always returning a true until this is fixed.  
+	/*
 	client = _ethernetServer.available();
 	if (client)
 	{
@@ -185,16 +192,15 @@ bool _readFromClient(void)
 					client.println("</html>");
 					break;
 
-					/* TODO leave this here as reminder to process incoming messages
+					// TODO leave this here as reminder to process incoming messages
 					// Add string terminator and prepare for the next message
-					inputString.string[inputString.idx] = 0;
-					GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=%s\n"), inputString.string);
-					inputString.idx = 0;
-					if (protocolParse(_ethernetMsg, inputString.string))
-					{
-						return true;
-					}
-					*/
+					//inputString.string[inputString.idx] = 0;
+					//GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=%s\n"), inputString.string);
+					//inputString.idx = 0;
+					//if (protocolParse(_ethernetMsg, inputString.string))
+					//{
+					//	return true;
+					//}
 				}
 				// every line of text received from the client ends with \r\n
 				if (inChar == '\n')
@@ -215,6 +221,8 @@ bool _readFromClient(void)
 		delay(1);	  // give the web browser time to receive the data
 		client.stop(); // close the connection
 	}
+	*/
+
 	return true;
 }
 
