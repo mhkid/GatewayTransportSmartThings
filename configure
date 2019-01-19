@@ -408,7 +408,7 @@ for opt do
         ;;
     --my-controller-is-smartthings=*)
         controller_ip=`echo ${optarg//./,}`
-        CPPFLAGS="-DMY_CONTROLLER_IS_SMARTTHINGS $CPPFLAGS"
+        CPPFLAGS="-DMY_SMARTTHINGS_ENABLED $CPPFLAGS"
         ;;
     --my-port=*)
         CPPFLAGS="-DMY_PORT=${optarg} $CPPFLAGS"

@@ -39,7 +39,7 @@
 //#define MY_LINUX_SERIAL_GROUPNAME "tty"
 
 // SmartThings Hub
-//#define MY_CONTROLLER_IS_SMARTTHINGS
+#define MY_SMARTTHINGS_ENABLED
 #define MY_IP_ADDRESS 192,168,1,41  // ip of raspberry pi gateway
 
 //#define MY_MAC_ADDRESS 0xB8, 0x27, 0xEB, 0xBA, 0x13, 0xB3
