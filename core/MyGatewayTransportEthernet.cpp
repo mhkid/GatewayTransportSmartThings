@@ -155,10 +155,10 @@ bool _readFromClient(void)
 {
 // This is where an http request would be received by the webserver hosted on the raspberry pi.
 // This isn't currently working and will need to look into why it's not receiving client requests correctly.
-// Could be because there is a custom ethernet.h for the linux version of MySensors.  Will look into
+// Could be because there is a custom ethernet.cpp for the linux version of MySensors.  Will look into
 // this in the future.  This means that this gateway transport can only send requests to the SmartThings hub
-// and can't process incoming requests from SmartThings.  This works fine on an ESP8266 and an UNO
-// with a W5100.  For now just always returning a true until this is fixed.  
+// and can't process incoming requests from SmartThings.  This code works fine on an ESP8266 and an UNO
+// with a W5100.  For now just always returning a true until this is fixed.
 	/*
 	client = _ethernetServer.available();
 	if (client)
@@ -235,33 +235,6 @@ bool gatewayTransportAvailable(void)
 	}
 
 	return true;
-
-    /*
-	_w5100_spi_en(true);
-
-	if (!client.connected()) {
-		client.stop();
-		if (client.connect(_ethernetControllerIP, MY_PORT)) {
-			GATEWAY_DEBUG(PSTR("GWT:TSA:ETH OK\n"));
-			_w5100_spi_en(false);
-			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
-			_w5100_spi_en(true);
-			presentNode();
-		} else {
-			GATEWAY_DEBUG(PSTR("!GWT:TSA:ETH FAIL\n"));
-			_w5100_spi_en(false);
-			return false;
-		}
-	}
-	if (_readFromClient()) {
-		setIndication(INDICATION_GW_RX);
-		_w5100_spi_en(false);
-		return true;
-	}
-	_w5100_spi_en(false);
-	return false;
-	*/
-
 }
 
 MyMessage& gatewayTransportReceive(void)
