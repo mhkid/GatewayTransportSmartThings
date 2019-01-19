@@ -17,8 +17,7 @@ custom gateway transport (MyGatewayTransportSmartThings.cpp)
 ## Usage
 Below are the steps for setting this transport up for MySensors to SmartThings integration.  
 
-Read the first step completely before building your Raspberry Pi gateway
 1. [Install and build](https://www.mysensors.org/build/raspberry) a MySensors gateway on a Raspberry Pi keeping the following in mind:
-..* Clone the MySensors repo as the instructions say, then clone this repo (git clone https://github.com/mhkid/MySensors.git STTransport --master) and just manually add/merge the files.  However, just be aware if you upgrade your MySensors version and this SmartThings transport repo hasn't been upgraded it may not work.
-..* All the rest of the steps should be the same for setting up your Raspberry Pi gateway.
+2. Clone the MySensors repo as the instructions say, then clone this repo (git clone https://github.com/mhkid/MySensors.git STTransport --master) and just manually add/merge the files.  However, just be aware if you upgrade your MySensors version and this SmartThings transport repo hasn't been upgraded it may not work.
+3. All the rest of the steps should be the same for setting up your Raspberry Pi gateway.
 
