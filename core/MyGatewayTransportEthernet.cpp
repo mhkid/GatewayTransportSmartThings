@@ -59,6 +59,8 @@ EthernetServer _ethernetServer(80, MY_GATEWAY_MAX_CLIENTS);
 static inputBuffer inputString;
 static EthernetClient client = EthernetClient();
 static EthernetClient httpClient;
+static bool currentLineIsBlank = true;
+
 
 // On W5100 boards with SPI_EN exposed we can use the real SPI bus together with radio
 // (if we enable it during usage)
@@ -85,13 +87,19 @@ bool gatewayTransportInit(void)
 
 bool gatewayTransportSend(MyMessage &message)
 {
+	sprintf(hubMsg, "%d;%d;%d;%d;%d;%s\n",message.sender, message.sensor, command, message.isAck(), message.type, message.getString(convBuf));
+	
 	// sends to the hub
-	int nbytes = 0;
 	char *_ethernetMsg = protocolFormat(message);
     String readString;
-    bool currentLineIsBlank = true;
+	char convBuf[61];
+  	char hubMsg[61];
+  	uint8_t command = message.getCommand();
+
 
 	GATEWAY_DEBUG(PSTR("GWT:TPS:STT Connecting to hub %s\n"), _ethernetMsg);
+    sprintf(hubMsg, "%d;%d;%d;%d;%d;%s\n",message.sender, message.sensor, command, message.isAck(), message.type, message.getString(convBuf));
+	GATEWAY_DEBUG(PSTR("GWT:TPS:STT hubMsg %s\n"), hubMsg);
 
 	setIndication(INDICATION_GW_TX);
 
@@ -133,75 +141,91 @@ bool gatewayTransportSend(MyMessage &message)
         GATEWAY_DEBUG(PSTR("GWT:TPS:STT Hub response: \n"));
         GATEWAY_DEBUG(PSTR("%s\n"), readString);
         httpClient.stop();
+		GATEWAY_DEBUG(PSTR("GWT:TPS:STT Connection closed\n"));
     }
     else 
     {
         GATEWAY_DEBUG(PSTR("!GWT:TPS:STT Failed to connect to hub\n"));
     }
 
-
-/*
-	setIndication(INDICATION_GW_TX);
-
-	_w5100_spi_en(true);
-	if (!client.connected()) {
-		client.stop();
-		if (client.connect(_ethernetControllerIP, MY_PORT)) {
-			GATEWAY_DEBUG(PSTR("GWT:TPS:ETH OK\n"));
-			_w5100_spi_en(false);
-			gatewayTransportSend(buildGw(_msgTmp, I_GATEWAY_READY).set(MSG_GW_STARTUP_COMPLETE));
-			_w5100_spi_en(true);
-			presentNode();
-		} else {
-			// connecting to the server failed!
-			GATEWAY_DEBUG(PSTR("!GWT:TPS:ETH FAIL\n"));
-			_w5100_spi_en(false);
-			return false;
-		}
-	}
-	nbytes = client.write((const uint8_t*)_ethernetMsg, strlen(_ethernetMsg));
-	_w5100_spi_en(false);
-*/
 	return (strlen(_ethernetMsg) > 0);
 }
 
 bool _readFromClient(void)
 {
-	// reads the response from the hub
-	while (client.connected() && client.available()) {
-		const char inChar = client.read();
-		if (inputString.idx < MY_GATEWAY_MAX_RECEIVE_LENGTH - 1) {
-			// if newline then command is complete
-			if (inChar == '\n' || inChar == '\r') {
-				// Add string terminator and prepare for the next message
-				inputString.string[inputString.idx] = 0;
-				GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=%s\n"), inputString.string);
-				inputString.idx = 0;
-				if (protocolParse(_ethernetMsg, inputString.string)) {
-					return true;
-				}
+	client = _ethernetServer.available();
+	if (client)
+	{
+		GATEWAY_DEBUG(PSTR("GWT:TPS:STT Client created\n"));
+		// reads an incoming request
+		while (client.connected())
+		{
+			if (client.available())
+			{
+				const char inChar = client.read();
+				// if newline then command is complete
+				if (inChar == '\n' && currentLineIsBlank)
+				{
+					// send a standard http response header
+					client.println("HTTP/1.1 200 OK");
+					client.println("Content-Type: text/html");
+					client.println("Connection: close");
+					client.println();
+					// send web page
+					// for now just sending back a webpage
+					client.println("<!DOCTYPE html>");
+					client.println("<html>");
+					client.println("<head>");
+					client.println("<title>MySensors Gateway</title>");
+					client.println("</head>");
+					client.println("<body>");
+					client.println("<h1>MySensors Gateway</h1>");
+					client.println("<p>Connected</p>");
+					client.println("</body>");
+					client.println("</html>");
+					break;
 
-			} else {
-				// add it to the inputString:
-				inputString.string[inputString.idx++] = inChar;
+					/* TODO leave this here as reminder to process incoming messages
+					// Add string terminator and prepare for the next message
+					inputString.string[inputString.idx] = 0;
+					GATEWAY_DEBUG(PSTR("GWT:RFC:MSG=%s\n"), inputString.string);
+					inputString.idx = 0;
+					if (protocolParse(_ethernetMsg, inputString.string))
+					{
+						return true;
+					}
+					*/
+				}
+				// every line of text received from the client ends with \r\n
+				if (inChar == '\n')
+				{
+					// last character on line of received text
+					// starting new line with next character read
+					currentLineIsBlank = true;
+				}
+				else if (inChar != '\r')
+				{
+					// a text character was received from client
+					currentLineIsBlank = false;
+					// add it to the inputString:
+					inputString.string[inputString.idx++] = inChar;
+				}
 			}
-		} else {
-			// Incoming message too long. Throw away
-			GATEWAY_DEBUG(PSTR("!GWT:RFC:MSG TOO LONG\n"));
-			inputString.idx = 0;
-			// Finished with this client's message. Next loop() we'll see if there's more to read.
-			break;
 		}
+		delay(1);	  // give the web browser time to receive the data
+		client.stop(); // close the connection
 	}
-	return false;
+	return true;
 }
 
 bool gatewayTransportAvailable(void)
 {
-	// original code was trying to stay connected to the hub
-	// not sure if this code is even needed for http
-	// could put code in here to ping the gateway but for now
-	// always returning true.
+	if (_readFromClient()) {
+		setIndication(INDICATION_GW_RX);
+		_w5100_spi_en(false);
+		return true;
+	}
+
 	return true;
 
     /*
