@@ -56,7 +56,6 @@ typedef struct {
 
 EthernetServer _ethernetServer(80, MY_GATEWAY_MAX_CLIENTS);
 
-static inputBuffer inputString;
 static EthernetClient client = EthernetClient();
 static EthernetClient httpClient;
 static bool currentLineIsBlank = true;
@@ -87,8 +86,6 @@ bool gatewayTransportInit(void)
 
 bool gatewayTransportSend(MyMessage &message)
 {
-	sprintf(hubMsg, "%d;%d;%d;%d;%d;%s\n",message.sender, message.sensor, command, message.isAck(), message.type, message.getString(convBuf));
-	
 	// sends to the hub
 	char *_ethernetMsg = protocolFormat(message);
     String readString;
