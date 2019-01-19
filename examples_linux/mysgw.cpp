@@ -38,6 +38,12 @@
 // Grant access to the specified system group for the serial device
 //#define MY_LINUX_SERIAL_GROUPNAME "tty"
 
+// SmartThings Hub
+#define MY_SMARTTHINGS_ENABLED
+#define MY_IP_ADDRESS 192,168,1,41  // ip of raspberry pi gateway
+
+//#define MY_MAC_ADDRESS 0xB8, 0x27, 0xEB, 0xBA, 0x13, 0xB3
+
 // MQTT options
 //#define MY_CONTROLLER_IP_ADDRESS 192, 168, 178, 68
 //#define MY_PORT 1883
@@ -78,6 +84,7 @@
 //#define MY_INCLUSION_MODE_DURATION 60
 // Digital pin used for inclusion mode button
 //#define MY_INCLUSION_MODE_BUTTON_PIN  3
+
 
 #include <MySensors.h>
 

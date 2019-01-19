@@ -239,7 +239,11 @@ MY_DEFAULT_RX_LED_PIN in your sketch instead to enable LEDs
 #include "drivers/Linux/EthernetClient.h"
 #include "drivers/Linux/EthernetServer.h"
 #include "drivers/Linux/IPAddress.h"
+#if defined(MY_SMARTTHINGS_ENABLED)
+#include "core/MyGatewayTransportSmartThings.cpp"
+#else
 #include "core/MyGatewayTransportEthernet.cpp"
+#endif
 #elif defined(MY_GATEWAY_W5100)
 // GATEWAY - W5100
 #include "core/MyGatewayTransportEthernet.cpp"
