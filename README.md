@@ -31,7 +31,7 @@ Below are the steps for setting this transport up for MySensors to SmartThings i
   
 3. Edit the mysgw.cpp file and modify the following lines:
   
-     *#define MY_SMARTTHINGS_ENABLED*
-     *#define MY_IP_ADDRESS 192,168,1,41  // ip of raspberry pi gateway*
+*#define MY_SMARTTHINGS_ENABLED*
+*#define MY_IP_ADDRESS 192,168,1,41  // ip of raspberry pi gateway*
      
 4. Continue on with the rest of the directions on the MySensors website for building your Raspberry Pi gateway.
